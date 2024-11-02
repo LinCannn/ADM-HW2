@@ -8,6 +8,7 @@ import re
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import scipy.stats as stats
 from scipy.stats import normaltest, shapiro, mannwhitneyu, zscore, f_oneway
+import calendar
 
 
 def my_read_csv(nrows = None):
@@ -100,6 +101,20 @@ def show_monthly_trends(df):
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.show()
 
+def best_days_of_year(df, n=20):
+    # Extract month and day from the timestamp
+    df['month'] = df['timestamp_created'].dt.month
+    df['day'] = df['timestamp_created'].dt.day
+
+    # Group by month and day, then count the occurrences
+    groupby_month_day = df.groupby(['month', 'day']).size().reset_index(name='count')
+
+    # Get the top n days in the year based on the count
+    top_n_days_of_year = groupby_month_day.nlargest(n, 'count').reset_index(drop=True)
+
+    return top_n_days_of_year
+
+
 def show_daily_trends(df):
     df['minute_hour'] = df['timestamp_created'].dt.strftime('%H:%M')
 
@@ -125,40 +140,27 @@ def show_daily_trends(df):
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.show()
 
-def plotTimeInterval(df, start, end):
+def plotTimeInterval(df, interval):
     # Create a new column for formatted time
     df['minute_hour'] = df['timestamp_created'].dt.strftime('%H:%M')
-    
+
     # Count occurrences and filter by time range
     minute_hour_counts = df['minute_hour'].value_counts().sort_index()
-    minute_hour_counts = minute_hour_counts[(minute_hour_counts.index >= start) & (minute_hour_counts.index <= end)]
-
-    # Apply Gaussian smoothing
-    smoothed_values = gaussian_filter1d(minute_hour_counts.values, sigma=3)
-
-    plt.figure(figsize=(15, 6))
-    # Add labels to the plots
-    plt.plot(minute_hour_counts.index, minute_hour_counts.values, marker='', linestyle='-', label='Original Data')
-    plt.plot(minute_hour_counts.index, smoothed_values, color='red', label='Smoothed Line')
-
-    plt.title('Number of Reviews')
-    plt.xlabel('Time (Hour:Minute)')
-    plt.ylabel('Number of Reviews')
-
-    # Create x-ticks for every 5 minutes within the start and end range
-    time_labels = pd.date_range(start=start, end=end, freq='5min').strftime('%H:%M')
-
-    # Determine tick positions for 5-minute intervals
-    tick_positions = np.arange(0, len(minute_hour_counts), 5)  # Every 5th index
-
-    # Set the x-ticks and labels
-    plt.xticks(ticks=tick_positions, labels=time_labels[:len(tick_positions)], rotation=45)
-
-    plt.legend()  # Ensure the legend is shown correctly
-    plt.tight_layout()
-    plt.grid(True, linestyle='--', alpha=0.7)
+    x = []
+    y = []
+    for start, end in interval:
+        specific_count = minute_hour_counts[(minute_hour_counts.index >= start) & (minute_hour_counts.index < end)]
+        y.append(specific_count.shape[0])
+        end = int(end[:2])-1
+        x.append(f"{start}-{end}:59")
+    
+    plt.figure(figsize=(12,8))
+    plt.bar(x,y, color='blue')
+    plt.xlabel('Time intervals')
+    plt.ylabel('N of reviews')
+    plt.title('Distribution of Number of Reviews by Time Interval')
+    plt.xticks(rotation=45)
     plt.show()
-
 
 def min_and_max_game_reviews(df):
     # Number of reviews received by each application: count of the review IDs of the reviews it received
@@ -170,7 +172,7 @@ def min_and_max_game_reviews(df):
 def review_per_game(df):
     # Change of scale of the number of reviews in Millions to make the graph better and sorting the values to plot in descending order 
     reviews_per_app = ((df['app_name'].value_counts())/1000000).sort_values(ascending=False)
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(12, 8))
     reviews_per_app[0:50].plot.bar(ylabel = 'Number of reviews', xlabel = 'App name', title = 'Number of reviews per application (in Millions)')
 
 
