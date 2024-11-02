@@ -1,6 +1,6 @@
 # ADM-HW2
 
-Second homework for the course "Advanced Algorithms for Data Mining"
+Second homework for the course "Algorithms for Data Mining"
 
 This homework is made by the collective effort of the following people:
 - Can Lin 1994375,
